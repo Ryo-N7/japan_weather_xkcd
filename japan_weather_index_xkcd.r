@@ -37,7 +37,7 @@ japan_airports <- japan_airports %>% rename(City = `City\nserved`)
 
 glimpse(japan_airports)
 
-# save our handy dataset so not have to re-run web scraping every time!
+# SAVE our handy dataset so not have to re-run web scraping every time! ####
 write.csv(japan_airports, "~/R_materials/japan_weather_xkcd/japan_airports.csv")
 
 japan_airports <- read.csv("~/R_materials/japan_weather_xkcd/japan_airports.csv", 
@@ -66,8 +66,14 @@ winter_weather <- map_df(jp_airport_codes$ICAO, riem::riem_measures,
 
 write.csv(winter_weather, "~/R_materials/japan_weather_xkcd/winter_weather.csv")
 
+# READ IN DATA >>> DONT RERUN RIEM CODE EVERY TIME ####
+
+summer_weather <- read.csv("summer_weather.csv", stringsAsFactors = FALSE)
+winter_weather <- read.csv("winter_weather.csv", stringsAsFactors = FALSE)
 
 glimpse(summer_weather)
+glimpse(winter_weather)
+
 
 # Look more closely at dataset: 
 # Recalculate in CELSIUS using weathermetrics package
@@ -118,10 +124,15 @@ glimpse(climate_japan)
 # Remove Narita airport observation row
 climate_japan <- climate_japan %>% filter(station != "RJAA")
 
+# Remove Kansai International >>> handles all internatonal flights, ~20 miles away from Osaka
+climate_japan <- climate_japan %>% filter(station != "RJBB")
+
 glimpse(climate_japan)
 
 # Ibaraki Aiport from Tokyo to Ibaraki
 climate_japan$City[climate_japan$station == "RJAH"] <- "Ibaraki"
+# Kochi, Kochi to just Kochi
+climate_japan$City[climate_japan$station == "RJOK"] <- "Kochi"
 
 glimpse(climate_japan)
 
@@ -129,6 +140,12 @@ glimpse(climate_japan)
 # climate_japan <- climate_japan %>% unite(Label, City, Airport, sep = " - ", remove = TRUE)
 
 glimpse(climate_japan)
+
+# Iwakuni appears twice for some reason...
+climate_japan <- climate_japan %>% unique()
+
+
+
 
 # Install XKCD font! ####
 
@@ -182,15 +199,168 @@ climate_japan %>%
   theme_xkcd() +
   theme(text = element_text(size = 16, family = "xkcd"))
 
+# need to fix city text >>> elongation vowels symbols in text
+# >>> 12 hours later, rerun, elongation vowels not in anymore???
+
+# oddly, the graph looks like a map of Japan... with cities in Hokkaido in the bottom right 
+# instead of the top right, vice-versa for Okinawa!
+# >>> see this much better on a bigger screen: screenshot
+
+
+
+# MAP of JAPAN:
+library()
+
+# acquire lon-lat of Japan from map_data()
+JPN <- map_data(map = "world", region = "Japan")
+
+# join lon-lat data into climate_japan
+lat_lon <- summer_weather %>% 
+  group_by(station) %>% 
+  summarize(lat = mean(lat), lon = mean(lon))
+
+# i'm sure there is a better way to do this???
+
+climate_japan_map <- left_join(climate_japan, lat_lon, by = "station") 
+
+glimpse(climate_japan_map)
+
+climate_japan_map %>% 
+  ggplot(aes(lon, lat)) +
+  geom_point(aes(color = winter_avg_temp), size = 2.5) +
+  geom_text_repel(aes(label = City),
+                  family = "xkcd", size = 3,
+                  max.iter = 50000) +
+  geom_polygon(data = JPN, aes(x = long, y = lat, group = group), 
+               fill = NA, color = "black") +
+  coord_map() +
+  labs(title = "Avg. Winter Temperature in Japan",
+       subtitle = "Data from RIEM 2016-2017",
+       x = "", y = "") +
+  theme_xkcd() +
+  theme(text = element_text(family = "xkcd", size = 14))
+
+# filter out below 30 lat
+# >>> make separate for Okinawa + Ryukyu Islands for create space
+
+glimpse(JPN)
+
+JPN_1 <- JPN %>% filter(lat > 30)
+
+# Blues set colors:
+colorRampPalette(brewer.pal(n = 9, name = "Blues"))(9)
+
+climate_japan_map %>% 
+  filter(lat > 30) %>% 
+  ggplot(aes(lon, lat)) +
+  geom_point(aes(color = winter_avg_temp), size = 3.5) +
+  geom_text_repel(aes(label = City),
+                  family = "xkcd", size = 4.5,
+                  max.iter = 50000) +
+  geom_polygon(data = JPN_1, aes(x = long, y = lat, group = group), 
+               fill = NA, color = "black") +
+  coord_map() +
+  labs(title = "Avg. Winter Temperature in Japan",
+       subtitle = "Data from RIEM 2016-2017",
+       x = "", y = "") +
+  theme_xkcd() +
+  theme(text = element_text(family = "xkcd", size = 14)) +
+  scale_color_gradient(low = "#08306B")
 
 
 
 
 
+# Okinawa and Ryukyu Islands
+Okinawa_Ryukyu <- JPN %>% filter(lat < 30)
+
+climate_japan_map %>% 
+  filter(lat < 30) %>% 
+  ggplot(aes(lon, lat)) +
+  geom_point(aes(color = winter_avg_temp), size = 3.5) +
+  geom_text_repel(aes(label = City),
+                  family = "xkcd", size = 4.5,
+                  max.iter = 50000) +
+  geom_polygon(data = JPN %>% filter(lat < 30), aes(x = long, y = lat, group = group), 
+               fill = NA, color = "black") +
+  coord_map() +
+  labs(title = "Avg. Winter Temperature in Japan",
+       subtitle = "Data from RIEM 2016-2017",
+       x = "", y = "") +
+  theme_xkcd() +
+  theme(text = element_text(family = "xkcd", size = 14)) +
+  scale_color_gradient(low = "#08306B")
+
+
+# Leaflet ####
+
+# Tourist areas:
+
+tour <- data_frame(
+  location = c("Hokkaido", "Tohoku", "Tokyo", "Osaka", 
+               "Kobe", "Shikoku", "Hiroshima", "Kyushu", "Okinawa"),
+  City = c("Sapporo", "Aomori", "Tokyo", "Osaka", "Kobe", 
+           "Kochi", "Hiroshima", "Matsuyama", "Naha")
+)
+
+tour <- left_join(tour, climate_japan_map, by = "City")
+
+# Not have Kanazawa, Kyoto, and Nara >>> just have to manually add in i guess?
+# won't let me do all 3 at once...
+
+Kanazawa <- ggmap::geocode("Kanazawa", output = "latlon")
+Kyoto <- ggmap::geocode("Kyoto", output = "latlon")
+Nara <- ggmap::geocode("Nara", output = "latlon")
+
+missing_tour <- rbind(Kanazawa, Kyoto, Nara)
+
+missing_tour <- missing_tour %>% mutate(City = c("Kanazawa", "Kyoto", "Nara"))
+
+missing_tour
+
+tour <- full_join(missing_tour, tour)
+
+# not have to run geocode each time:
+write.csv(tour, "~/R_materials/japan_weather_xkcd/tour.csv")
+
+tour <- read.csv("tour.csv", stringsAsFactors = FALSE)
+
+###################
+tour %>% 
+  filter(City == c("Kanazawa", "Kyoto", "Nara")) %>% 
+  select(lat, lon) %>% 
+  merge(missing_tour)
+
+j <- full_join(tour, missing_tour, by = c("City", "lat", "lon")) %>% glimpse()
+
+bind_rows(missing_tour, tour)
+
+tour %>% 
+  left_join(missing_tour[c("City", "lat", "lon")], by = c("lat", "lon", "City")) %>% 
+  glimpse()
+########################
+
+# Try with leaflet instead?
+
+library(leaflet)
+
+leaflet(climate_japan_map) %>% 
+  addTiles() %>% 
+  setView(lng = 137.7, lat = 36.5, zoom = 6) %>% 
+  addCircles(lng = ~lon, lat = ~lat, radius = 5000, color = "#09f") %>% 
+  addMarkers(lng = ~lon, lat = ~lat, 
+             popup = paste("Winter Avg.(Celsius):",
+               round(climate_japan_map$winter_avg_temp, 2), 
+               " | ",
+               "Summer Humidex:",
+               round(climate_japan_map$summer_humidex, 2)),
+             label = ~City
+             ) %>% 
+  addMarkers(lng = ~tour$lon, lat = ~tour$lat)
 
 
 
-
+ 
 
 
 
