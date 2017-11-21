@@ -1,5 +1,4 @@
-"","Rank","Airport","City
-served","Region","IATA","ICAO","Passengers","Aircraft","Cargo"
+"","Rank","Airport","City","Region","IATA","ICAO","Passengers","Aircraft","Cargo"
 "1",1,"Haneda Airport","Tokyo","Kanto","HND","RJTT","75,254,942","438,542","1,173,752"
 "2",2,"Narita International Airport","Tokyo","Kanto","NRT","RJAA","34,751,221","233,500","2,122,318"
 "3",3,"Kansai International Airport","Osaka","Kansai","KIX","RJBB","23,136,223","163,506","745,606"
