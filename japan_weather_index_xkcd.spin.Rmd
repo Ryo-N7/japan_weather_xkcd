@@ -1,34 +1,59 @@
+---
+title: "japan_weather_index_xkcd.r"
+author: "Ryo Nakagawara"
+date: "Wed Nov 22 01:18:06 2017"
+output:
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+In the past week or so, XKCD graphs of the most comfortable place to live in -X- have been popping up over social media. Jumping onto this trend, I will do one for JAPAN, where I was born!
+
+Let's get started!
 
 ```{r }
-# Japan weather comfort index 
-# >>> which city is most comfortable??
-
-library(riem)
 library(dplyr)
-library(ggplot2)
-
+library(riem)
 
 riem_stations(network = "JP__ASOS")
-# ID is the ICAO code > IATA
 
+```
 
-# source busiest Japanese airports (total passenger traffic) from Wikipedia:
-# https://en.wikipedia.org/wiki/List_of_the_busiest_airports_in_Japan
-# 
+Using Maelle Salmon's `riem` package we can look up weather data from all over the world collected at airport weather stations. We can see that there are 136 different stations (and airports) in Japan's network! From the `ID` we can also see that the airports are coded in the **ICAO** standard rather than the **IATA** standard, this will come into play later!
 
+For which exact cities to choose, I took a note from Maelle's article where she searched for the cities with the busiest airports. This makes sense as the weather data we will gather and the airport data will then have a similar column on which we can join on!
+
+My source was from the **Ministry of Land, Infrastructure, Transport and Tourism (MLIT)** statistics on Japan's busiest airports (in terms of total passenger traffic), which has been copied onto everybody's favorite "knowledge bank", Wikipedia ([Link!](https://en.wikipedia.org/wiki/List_of_the_busiest_airports_in_Japan))! The most recent list is from 2015 and although I could look up more recent figures I don't think two years would make such a big difference (... and I'm lazy). 
+
+I load up my favorite web scraping package, `rvest` and gather the list of airports! (For a step-by-step intro to web-scraping using R, check out my other blog post [here](https://ryo-n7.github.io/2017-09-18-global-peace-index/)!)
+
+```{r}
 library(rvest)
 
-# NOTE: 2015 data.
 url <- "https://en.wikipedia.org/wiki/List_of_the_busiest_airports_in_Japan"
 
 # css selector: "table.wikitable:nth-child(10)"
 
-japan_airports <- url %>% read_html() %>% 
+japan_airports <- url %>% 
+  read_html() %>% 
   html_node("table.wikitable:nth-child(10)") %>% 
   html_table()
 
 glimpse(japan_airports)
 
+```
+
+In the table, the airport codes in both IATA and ICAO format are in a single column separated by a slash.
+
+We can use the `separate()` function from the `tidyr` package to separate the airport code column into the respective IATA and ICAO codes.
+
+The regex for a literal slash is "\\/", remember that you need to escape twice!
+
+```{r Separate IATA and ICAO codes}
 # Separate IATA and ICAO codes:
 library(tidyr) # use separate() function!
 
@@ -39,20 +64,52 @@ japan_airports <- japan_airports %>% rename(City = `City\nserved`)
 
 glimpse(japan_airports)
 
-# SAVE our handy dataset so not have to re-run web scraping every time! ####
+```
+
+Now let's **save** our handy dataset so we do not have to re-run web scraping every time!
+
+```{r}
+
 write.csv(japan_airports, "~/R_materials/japan_weather_xkcd/japan_airports.csv")
+
+```
+
+And when we want to start off where we left off we can use `read.csv()` to load our data set without have to go through the web scraping code!
+
+```{r}
 
 japan_airports <- read.csv("~/R_materials/japan_weather_xkcd/japan_airports.csv", 
          stringsAsFactors = FALSE)
 
-# 47 prefectures, top 50 airports, let's just start by looking at the weather data for all
-# of them instead of taking only top 25/10/whatever airports.
+```
+
+Back to our analysis!
+
+47 prefectures, top 50 airports, let's just start by looking at the weather data for all
+of them instead of taking only top 25/10/whatever airports. We can shorten the list if that's too many data points on the plot or map later on!
+
+```{r}
 
 jp_airport_codes <- japan_airports %>% select(Airport, City, ICAO)
 
+```
+
 # taking code from Maelle Salmon's post 
 # >>> use purrr::map_df to call riem::measures on each airport code!
+I've been slowly trying to incorporate more purrr into my data analysis tool set, so it's great that I get another chance to use it here!
+
+Basically what purrr is doing is:
+
+*
+*
+*
+*
+
+Let's see it in action!
+
+```{r purrr for create df with data for each weather station}
 library(purrr)
+library(riem)
 
 # big file, will take a minute or so!
 summer_weather <- map_df(jp_airport_codes$ICAO, riem::riem_measures,
@@ -60,7 +117,6 @@ summer_weather <- map_df(jp_airport_codes$ICAO, riem::riem_measures,
                                 date_end = "2017-08-31")
 
 write.csv(summer_weather, "~/R_materials/japan_weather_xkcd/summer_weather.csv")
-# BIG FILE
 
 winter_weather <- map_df(jp_airport_codes$ICAO, riem::riem_measures,
                                 date_start = "2016-12-01",
@@ -68,7 +124,11 @@ winter_weather <- map_df(jp_airport_codes$ICAO, riem::riem_measures,
 
 write.csv(winter_weather, "~/R_materials/japan_weather_xkcd/winter_weather.csv")
 
-# READ IN DATA >>> DONT RERUN RIEM CODE EVERY TIME ####
+```
+
+READ IN DATA >>> DONT RERUN RIEM CODE EVERY TIME
+
+```{r save summer+winter_weather.csv}
 
 summer_weather <- read.csv("summer_weather.csv", stringsAsFactors = FALSE)
 winter_weather <- read.csv("winter_weather.csv", stringsAsFactors = FALSE)
@@ -76,9 +136,13 @@ winter_weather <- read.csv("winter_weather.csv", stringsAsFactors = FALSE)
 glimpse(summer_weather)
 glimpse(winter_weather)
 
+```
 
-# Look more closely at dataset: 
-# Recalculate in CELSIUS using weathermetrics package
+## Data munging
+Recalculate in CELSIUS using weathermetrics package
+
+```{r}
+
 library(weathermetrics)
 
 
@@ -95,7 +159,12 @@ winter_weather <- winter_weather %>%
                                     old_metric = "f", 
                                     new_metric = "c"))
 
-# calculate the Humidex with the calcHumx() function in the comf package!
+```
+
+
+Calculate the Humidex with the calcHumx() function in the comf package!
+
+```{r calculate humidex and avg winter temp}
 library(comf)
 
 summer_weather <- summer_weather %>% 
@@ -109,20 +178,33 @@ winter_data <- winter_weather %>%
                  group_by(station) %>% 
                  summarize(winter_avg_temp = mean(tmpc, na.rm = TRUE))
 
-# join together:
+```
+
+Join together using `left_join()` operation!
+
+```{r}
 
 climate_japan <- left_join(summer_data, winter_data, by = "station")
 
 glimpse(climate_japan)
 
-# add in city names through airport code data set
+```
+
+Add in city names through airport code data set
+
+```{r}
+
 climate_japan <- left_join(climate_japan, jp_airport_codes,
                            by = c("station" = "ICAO"))
 
 glimpse(climate_japan)
-# hmm remove Narita as not really TOKYO >>> far out in Chiba
-# Haneda is more representative of Tokyo's weather, although it is stuck out in Tokyo Bay
 
+```
+
+hmm... remove Narita as not really TOKYO >>> far out in Chiba
+Haneda is more representative of Tokyo's weather, although it is stuck out in Tokyo Bay
+
+```{r}
 # Remove Narita airport observation row
 climate_japan <- climate_japan %>% filter(station != "RJAA")
 
@@ -131,55 +213,48 @@ climate_japan <- climate_japan %>% filter(station != "RJBB")
 
 glimpse(climate_japan)
 
+```
+
+
+
+```{r}
 # Ibaraki Aiport from Tokyo to Ibaraki
 climate_japan$City[climate_japan$station == "RJAH"] <- "Ibaraki"
+
 # Kochi, Kochi to just Kochi
 climate_japan$City[climate_japan$station == "RJOK"] <- "Kochi"
 
 glimpse(climate_japan)
 
+```
+
+
+
+```{r}
 # just use CITY as the labels instead or clog up the graph...
 # climate_japan <- climate_japan %>% unite(Label, City, Airport, sep = " - ", remove = TRUE)
-
-glimpse(climate_japan)
 
 # Iwakuni appears twice for some reason...
 climate_japan <- climate_japan %>% unique()
 
+```
 
 
 
-# Install XKCD font! ####
+## Plotting!
 
-library(extrafont)
+Now let's plot! Well, before that we have to install the **xkcd** font and package. Installing fonts can be a bit difficult but 
+>>
+>>>
+>>>>
+
+Now we are ready!
+
+```{r}
 library(ggplot2)
-
-download.file("http://simonsoftware.se/other/xkcd.ttf", destfile = "xkcd.ttf", mode = "wb")
-
-system("mkdir ~/.fonts")
-
-system("cp xkcd.ttf ~/.fonts")
-
-font_import(pattern = "[X/x]kcd", prompt = FALSE)
-
-fonts()
-
-fonttable()
-
-if(.Platform$OS.type != "unix") {
-  loadfonts(device = "win")
-} else {
-  loadfonts()
-}
-
-windowsFonts()
-
-
-# Plotting! ####
-library(xkcd)
-library(ggplot2)
-library(extrafont)
 library(ggrepel)
+library(xkcd)
+library(extrafont)
 
 xrange <- range(climate_japan$summer_humidex)
 yrange <- range(climate_japan$winter_avg_temp)
@@ -208,10 +283,12 @@ climate_japan %>%
 # instead of the top right, vice-versa for Okinawa!
 # >>> see this much better on a bigger screen: screenshot
 
+```
 
 
+```{r}
 # MAP of JAPAN:
-library()
+library(ggplot2)
 
 # acquire lon-lat of Japan from map_data()
 JPN <- map_data(map = "world", region = "Japan")
@@ -242,11 +319,21 @@ climate_japan_map %>%
   theme_xkcd() +
   theme(text = element_text(family = "xkcd", size = 14))
 
+```
+
+
+
 # filter out below 30 lat
 # >>> make separate for Okinawa + Ryukyu Islands for create space
 
+```{r}
+
 glimpse(JPN)
 
+```
+
+
+```{r}
 # Blues set colors:
 colorRampPalette(brewer.pal(n = 9, name = "Blues"))(9)
 # Red set colors:
@@ -291,8 +378,10 @@ climate_japan_map %>%
   theme(text = element_text(family = "xkcd", size = 14)) +
   scale_color_gradient(low = "#08306B")
 
+```
 
 
+```{r}
 # Okinawa and Ryukyu Islands
 Okinawa_Ryukyu <- JPN %>% filter(lat < 30)
 
@@ -313,7 +402,10 @@ climate_japan_map %>%
   theme(text = element_text(family = "xkcd", size = 14)) +
   scale_color_gradient(low = "#08306B")
 
+```
 
+
+```{r}
 # Leaflet ####
 
 # Tourist areas:
@@ -347,23 +439,10 @@ write.csv(tour, "~/R_materials/japan_weather_xkcd/tour.csv")
 
 tour <- read.csv("tour.csv", stringsAsFactors = FALSE)
 
-###################
-tour %>% 
-  filter(City == c("Kanazawa", "Kyoto", "Nara")) %>% 
-  select(lat, lon) %>% 
-  merge(missing_tour)
+```
 
-j <- full_join(tour, missing_tour, by = c("City", "lat", "lon")) %>% glimpse()
 
-bind_rows(missing_tour, tour)
-
-tour %>% 
-  left_join(missing_tour[c("City", "lat", "lon")], by = c("lat", "lon", "City")) %>% 
-  glimpse()
-########################
-
-# Try with leaflet instead?
-
+```{r}
 library(leaflet)
 
 leaflet(climate_japan_map) %>% 
@@ -379,11 +458,10 @@ leaflet(climate_japan_map) %>%
              label = ~City
              ) %>% 
   addMarkers(lng = ~tour$lon, lat = ~tour$lat)
+
 ```
 
 
----
-title: "japan_weather_index_xkcd.r"
-author: "Ryo Nakagawara"
-date: "Wed Nov 22 01:18:06 2017"
----
+
+
+
