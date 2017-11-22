@@ -1,3 +1,5 @@
+
+```{r }
 # Japan weather comfort index 
 # >>> which city is most comfortable??
 
@@ -377,22 +379,11 @@ leaflet(climate_japan_map) %>%
              label = ~City
              ) %>% 
   addMarkers(lng = ~tour$lon, lat = ~tour$lat)
+```
 
 
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+---
+title: "japan_weather_index_xkcd.r"
+author: "Ryo Nakagawara"
+date: "Wed Nov 22 01:18:06 2017"
+---
