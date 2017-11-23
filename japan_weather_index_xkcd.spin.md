@@ -286,7 +286,7 @@ climate_japan %>%
   annotate("text", x = 16.5, y = 10, label = "Honshu, Kyushu, \n and Shikoku Islands", family = "xkcd", size = 5.5)
 ```
 
-<img src="japan_weather_index_xkcd.spin_files/figure-markdown_github/xkcd graph-1.png" style="display: block; margin: auto;" />
+<img src="japan_weather_index_xkcd.spin_files/figure-markdown_github/xkcd-graph-1.png" style="display: block; margin: auto;" />
 
 The graph looks like a map of Japan... with cities in Hokkaido on the bottom left instead of the top right, vice-versa for Okinawa! Let's try plotting our data onto an actual map of Japan to get a different perspective.
 
@@ -341,7 +341,7 @@ climate_japan_map %>%
   scale_color_gradient(low = "#08306B")
 ```
 
-<img src="japan_weather_index_xkcd.spin_files/figure-markdown_github/Japan maps-1.png" style="display: block; margin: auto;" />
+<img src="japan_weather_index_xkcd.spin_files/figure-markdown_github/Japan-maps-1.png" style="display: block; margin: auto;" />
 
 ``` r
 # Humidex: ####
@@ -364,7 +364,7 @@ climate_japan_map %>%
   scale_color_gradient(low = "#FCBBA1", high = "#67000D")
 ```
 
-<img src="japan_weather_index_xkcd.spin_files/figure-markdown_github/Japan maps-2.png" style="display: block; margin: auto;" />
+<img src="japan_weather_index_xkcd.spin_files/figure-markdown_github/Japan-maps-2.png" style="display: block; margin: auto;" />
 
 A large area in the middle of Honshu Island that does not have any data is the Central Highland region, which is a very mountainous region and therefore there aren't any airport weather stations located there for our plot. This is a great area to go if you love to ski and relax in an onsen! In Nagano Prefecture you can go to [Jigokudani Monkey Park](http://en.jigokudani-yaenkoen.co.jp/) where you can see snow monkeys relaxing in the onsen!
 
@@ -391,7 +391,7 @@ climate_japan_map %>%
   scale_color_gradient(low = "#08306B")
 ```
 
-![](japan_weather_index_xkcd.spin_files/figure-markdown_github/Okinawa%20+%20Ryukyu%20map-1.png)
+![](japan_weather_index_xkcd.spin_files/figure-markdown_github/Okinawa-Ryukyu-map-1.png)
 
 ``` r
 climate_japan_map %>% 
@@ -412,7 +412,7 @@ climate_japan_map %>%
   scale_color_gradient(low = "#FCBBA1", high = "#67000D")
 ```
 
-![](japan_weather_index_xkcd.spin_files/figure-markdown_github/Okinawa%20+%20Ryukyu%20map-2.png)
+![](japan_weather_index_xkcd.spin_files/figure-markdown_github/Okinawa-Ryukyu-map-2.png)
 
 As we can see from all the maps, the differences are pretty obvious. The segmentations we saw in the Humidex/Avg. Winter Temperature graph can be clearly seen with the map. With Japan being such a narrow chain of islands going from as far north as Hokkaido to the warm beaches of Okinawa there aren't many surprises in the data. As Japan is known for it's very distinct four seasons, maybe I'll incorporate spring and autumn data for different blog post...! It can be **very** humid in Japan during the summer time, it feels like you are melting constantly and I much prefer the spring months of Japan, the beginning of which is heralded by the blooming of the sakura/cherry blossoms!
 

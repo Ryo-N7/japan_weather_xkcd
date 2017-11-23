@@ -228,7 +228,7 @@ Well, before actually plotting, we have to install the **xkcd** font and package
 
 Now we are ready!
 
-```{r xkcd graph, fig.height=7, fig.width=8, fig.align='center'}
+```{r xkcd-graph, fig.height=7, fig.width=8, fig.align='center'}
 library(ggplot2)
 library(ggrepel)
 library(xkcd)
@@ -286,7 +286,7 @@ glimpse(climate_japan_map)
 
 To be able to view the map better, we can cut out the Okinawa and Ryukyu Islands to create space by filtering out latitudes below 30&deg;. We will create a separate map for those islands too.
 
-```{r Japan maps, fig.height=7, fig.width=8, fig.align='center'}
+```{r Japan-maps, fig.height=7, fig.width=8, fig.align='center'}
 # Winter avg. temp: ####
 
 climate_japan_map %>% 
@@ -334,7 +334,7 @@ A large area in the middle of Honshu Island that does not have any data is the C
 
 Now for the Okinawa and Ryukyu Islands:
 
-```{r Okinawa + Ryukyu map}
+```{r Okinawa-Ryukyu-map}
 
 climate_japan_map %>% 
   filter(lat < 30) %>% 
