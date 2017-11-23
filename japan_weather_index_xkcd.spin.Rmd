@@ -3,8 +3,8 @@ title: "japan_weather_index_xkcd.r"
 author: "Ryo Nakagawara"
 date: "Wed Nov 22 01:18:06 2017"
 output:
-  html_document:
-    code_folding: hide
+  md_document: 
+    variant: markdown_github
 ---
 
 ```{r setup, include=FALSE}
@@ -51,7 +51,11 @@ In the table, the airport codes in both IATA and ICAO format are in a single col
 
 We can use the `separate()` function from the `tidyr` package to separate the airport code column into the respective IATA and ICAO codes.
 
-The regex for a literal slash is "\\/", remember that you need to escape twice!
+The regex for a literal slash is `"\\/"`, remember that you need to escape twice!
+
+Let's also rename `City\nserved` into a simpler `City`.
+
+Then, let's **save** our handy dataset so we do not have to re-run web scraping every time!
 
 ```{r Separate IATA and ICAO codes}
 # Separate IATA and ICAO codes:
@@ -61,14 +65,6 @@ japan_airports <- japan_airports %>%
   separate(`IATA/ICAO`, c("IATA", "ICAO"), "\\/")
 
 japan_airports <- japan_airports %>% rename(City = `City\nserved`)
-
-glimpse(japan_airports)
-
-```
-
-Now let's **save** our handy dataset so we do not have to re-run web scraping every time!
-
-```{r}
 
 write.csv(japan_airports, "~/R_materials/japan_weather_xkcd/japan_airports.csv")
 
@@ -81,70 +77,63 @@ And when we want to start off where we left off we can use `read.csv()` to load 
 japan_airports <- read.csv("~/R_materials/japan_weather_xkcd/japan_airports.csv", 
          stringsAsFactors = FALSE)
 
-```
-
-Back to our analysis!
-
-47 prefectures, top 50 airports, let's just start by looking at the weather data for all
-of them instead of taking only top 25/10/whatever airports. We can shorten the list if that's too many data points on the plot or map later on!
-
-```{r}
-
+# We only need a small subset of the variables for this particular blog post!
 jp_airport_codes <- japan_airports %>% select(Airport, City, ICAO)
 
+glimpse(jp_airport_codes)
+
 ```
 
+## Weather data
+
+Here I considered quite a few sources before just settling with the `RIEM` package for convenience.
+
+The first place I looked was the Japan Meteorological Agency's website in both English and Japanese. If you go [here](http://www.data.jma.go.jp/obd/stats/koku/kikohyo/kikohyomain_e.html) you can find the the climatological tables for all Japanese airports in English. You can download the entire data set as a .zip file (click on "File" on the top header) or you can click on each airport (with its corresponding ICAO location indicator) to grab its report. You can also find in English, [here](http://www.data.jma.go.jp/obd/stats/data/en/smp/index.html), the tables of monthly climate statistics with drop-down menus for each station and for different variables such as "monthly mean air temperature", "monthly vapor pressure", etc. Probably the most useful tables for a quick glance is [here](http://www.data.jma.go.jp/obd/stats/data/en/normal/normal.html), which shows tables for monthly and annual climate normals for the major observatories in Japan from 1981-2010. 
+
+For Japanese people there is a built-in API on the website ([here!](http://www.data.jma.go.jp/gmd/risk/obsdl/index.php)) that lets you choose from a multitude of different options and download your own customized dataset as a CSV file. 
+
+>>> A picture of the interface. 
+
+Just putting this out there for anybody who wants to look at Japan's meteorological data in the future!
+
 # taking code from Maelle Salmon's post 
-# >>> use purrr::map_df to call riem::measures on each airport code!
+Basically we use `map_df()` to apply `riem_measures()` on each airport code (as a vector input) with the output being a nice data frame!
 I've been slowly trying to incorporate more purrr into my data analysis tool set, so it's great that I get another chance to use it here!
-
-Basically what purrr is doing is:
-
-*
-*
-*
-*
 
 Let's see it in action!
 
-```{r purrr for create df with data for each weather station}
+```{r purrr for create df with data for each weather station and SAVE}
 library(purrr)
 library(riem)
 
-# big file, will take a minute or so!
-summer_weather <- map_df(jp_airport_codes$ICAO, riem::riem_measures,
+summer_weather <- map_df(jp_airport_codes$ICAO, riem_measures,
                                 date_start = "2017-06-01",
                                 date_end = "2017-08-31")
 
-write.csv(summer_weather, "~/R_materials/japan_weather_xkcd/summer_weather.csv")
-
-winter_weather <- map_df(jp_airport_codes$ICAO, riem::riem_measures,
+winter_weather <- map_df(jp_airport_codes$ICAO, riem_measures,
                                 date_start = "2016-12-01",
                                 date_end = "2017-02-28")
 
+# As before we save these as .csv files:
+write.csv(summer_weather, "~/R_materials/japan_weather_xkcd/summer_weather.csv")
 write.csv(winter_weather, "~/R_materials/japan_weather_xkcd/winter_weather.csv")
 
-```
-
-READ IN DATA >>> DONT RERUN RIEM CODE EVERY TIME
-
-```{r save summer+winter_weather.csv}
-
+# Load them back in after opening a new session instead of waiting to download from RIEM package again:
 summer_weather <- read.csv("summer_weather.csv", stringsAsFactors = FALSE)
 winter_weather <- read.csv("winter_weather.csv", stringsAsFactors = FALSE)
 
-glimpse(summer_weather)
-glimpse(winter_weather)
-
 ```
 
-## Data munging
-Recalculate in CELSIUS using weathermetrics package
+The result is two gigantic datasets of around 105,000 observations each along with 25 variables ranging from dew point temperature, wind speed in knots, relative humidity, and many more!
 
-```{r}
+## Further Data munging
 
+Recalculate the temperatures into **Celcius** using the `convert_temperature()` function in the `weathermetrics` package!
+
+A quick reminder that the formula is: $$\large\frac{(Fahrenheit - 32)\cdot5}{9} = Celsius$$
+
+```{r fahrenheit to celsius}
 library(weathermetrics)
-
 
 summer_weather <- summer_weather %>% 
                     mutate(tmpc = convert_temperature(tmpf,
@@ -161,8 +150,9 @@ winter_weather <- winter_weather %>%
 
 ```
 
+We can then calculate the **Humidex** with the `calcHumx()` function in the `comf` package!
 
-Calculate the Humidex with the calcHumx() function in the comf package!
+For those curious the formula is: $$\large Temperature (Celsius) + 0.5555\left(6.11e^{5417.753(\frac{1}{273.16}-\frac{1}{273.15+Dew Point})} - 10\right) $$
 
 ```{r calculate humidex and avg winter temp}
 library(comf)
@@ -172,7 +162,8 @@ summer_weather <- summer_weather %>%
 
 summer_data <- summer_weather %>% 
                  group_by(station) %>% 
-                 summarize(summer_humidex = mean(humidex, na.rm = TRUE))
+                 summarize(summer_avg_temp = mean(tmpc, na.rm = TRUE),
+                           summer_humidex = mean(humidex, na.rm = TRUE))
 
 winter_data <- winter_weather %>% 
                  group_by(station) %>% 
@@ -180,19 +171,11 @@ winter_data <- winter_weather %>%
 
 ```
 
-Join together using `left_join()` operation!
+Join summer and winter together using the `left_join()` operation! Then, join with the `jp_airport_codes` data set to add in city names to airport code data set, combine them by the airport ICAO code.
 
-```{r}
+```{r join datasets together >>> climate_japan}
 
 climate_japan <- left_join(summer_data, winter_data, by = "station")
-
-glimpse(climate_japan)
-
-```
-
-Add in city names through airport code data set
-
-```{r}
 
 climate_japan <- left_join(climate_japan, jp_airport_codes,
                            by = c("station" = "ICAO"))
@@ -201,56 +184,48 @@ glimpse(climate_japan)
 
 ```
 
-hmm... remove Narita as not really TOKYO >>> far out in Chiba
-Haneda is more representative of Tokyo's weather, although it is stuck out in Tokyo Bay
+hmm... remove Narita as not really TOKYO >>> far out in Chiba, and besides the airport there's nothing of interest (to tourists at least) out there anyways!
+Haneda is more representative of Tokyo's weather, although it is stuck out in Tokyo Bay...
 
-```{r}
-# Remove Narita airport observation row
-climate_japan <- climate_japan %>% filter(station != "RJAA")
+Also we need to remove Kansai International Airport, as it is around 20 miles away from all the attractions in Osaka. Fun fact: Kansai Int'l was built to relieve congestion in Osaka Airport (also included in this data set) and only handles international flights!
 
-# Remove Kansai International >>> handles all internatonal flights, ~20 miles away from Osaka
-climate_japan <- climate_japan %>% filter(station != "RJBB")
+```{r filter out extraneous stations}
 
-glimpse(climate_japan)
+climate_japan <- climate_japan %>% filter(station != "RJAA")    # RJAA == Narita Airport
 
-```
-
-
-
-```{r}
-# Ibaraki Aiport from Tokyo to Ibaraki
-climate_japan$City[climate_japan$station == "RJAH"] <- "Ibaraki"
-
-# Kochi, Kochi to just Kochi
-climate_japan$City[climate_japan$station == "RJOK"] <- "Kochi"
-
-glimpse(climate_japan)
+climate_japan <- climate_japan %>% filter(station != "RJBB")    # RJBB == Kansai Int'l Airport
 
 ```
 
+For some odd reason Ibaraki Airport is listed as Tokyo, when it is anything but! Also, we should shorten Kochi's label, it's going to be cluttered enough as it is!
 
+```{r manual re-label}
 
-```{r}
-# just use CITY as the labels instead or clog up the graph...
-# climate_japan <- climate_japan %>% unite(Label, City, Airport, sep = " - ", remove = TRUE)
+climate_japan$City[climate_japan$station == "RJAH"] <- "Ibaraki"   # Tokyo >>> Ibaraki
 
-# Iwakuni appears twice for some reason...
+climate_japan$City[climate_japan$station == "RJOK"] <- "Kochi"     # Kochi, Kochi >>> Kochi
+
+```
+
+Iwakuni appears twice for some reason... very odd, but we can remove it by using the `unique()` function which filters out any duplicate rows.
+
+```{r unique()}
+
 climate_japan <- climate_japan %>% unique()
 
+glimpse(climate_japan)
+
 ```
 
-
+Great! Our data set looks ready!
 
 ## Plotting!
 
-Now let's plot! Well, before that we have to install the **xkcd** font and package. Installing fonts can be a bit difficult but 
->>
->>>
->>>>
+Well, before that we have to install the **xkcd** font and package. You can read about how to install it [here](). 
 
 Now we are ready!
 
-```{r}
+```{r xkcd graph, fig.height=7, fig.width=8, fig.align='center'}
 library(ggplot2)
 library(ggrepel)
 library(xkcd)
@@ -259,7 +234,7 @@ library(extrafont)
 xrange <- range(climate_japan$summer_humidex)
 yrange <- range(climate_japan$winter_avg_temp)
 
-set.seed(42)
+set.seed(8)
 
 climate_japan %>% 
   ggplot(aes(summer_humidex, winter_avg_temp)) +
@@ -269,76 +244,67 @@ climate_japan %>%
                   max.iter = 50000) +
   ggtitle("Where to live based on your temperature preferences",
           subtitle = "Data from airport weather stations 2016-2017") +
-  xlab("Humidex: summer heat & humidity") +
-  ylab("Avg. winter temperature - Celsius") +
+  xlab("Humidex: summer heat and humidity") +
+  ylab("Avg. winter temperature in Celsius") +
   xkcdaxis(xrange = xrange,
            yrange = yrange) +
   theme_xkcd() +
   theme(text = element_text(size = 16, family = "xkcd"))
 
-# need to fix city text >>> elongation vowels symbols in text
-# >>> 12 hours later, rerun, elongation vowels not in anymore???
 
-# oddly, the graph looks like a map of Japan... with cities in Hokkaido in the bottom right 
-# instead of the top right, vice-versa for Okinawa!
-# >>> see this much better on a bigger screen: screenshot
+climate_japan %>% 
+  ggplot(aes(summer_avg_temp, winter_avg_temp)) +
+  geom_point() +
+  geom_text_repel(aes(label = City), 
+                  family = "xkcd",
+                  max.iter = 50000) +
+  ggtitle("Where to live in Japan based on your temperature preferences!",
+          subtitle = "Data from airport weather stations, 2016-2017") +
+  xlab("Avg. summer temperature in Celsius") +
+  ylab("Avg. winter temperature in Celsius") +
+  xkcdaxis(xrange = xrange,
+           yrange = yrange) +
+  theme_xkcd() +
+  theme(text = element_text(size = 16, family = "xkcd")) +
+  annotate("text", x = 15, y = 0, label = "Hokkaido Island", family = "xkcd", size = 6) +
+  annotate("segment", y = 2, yend = -5.5, x = 18.7, xend = 20.6, color = "blue", size = 1.5) +
+  annotate("segment", y = -3, yend = -5.5, x = 14.5, xend = 16.5, color = "blue", size = 1.5) +
+  annotate("text", x = 25, y = 20, label = "Okinawa and \nRyukyu Islands", family = "xkcd", size = 5) +
+  annotate("segment", y = 17.5, yend = 15, x = 26, xend = 29.5, color = "darkred", size = 1.5) +
+  annotate("segment", y = 22, yend = 22, x = 27, xend = 30.5, color = "darkred", size = 1.5) +
+  annotate("text", x = 18.5, y = 10, label = "Honshu, Kyushu, \n and Shikoku Islands", family = "xkcd", size = 5.5)
+
 
 ```
 
+The graph looks like a map of Japan... with cities in Hokkaido in the bottom left instead of the top right, vice-versa for Okinawa! Let's try plotting our data onto an actual map of Japan to get a different perspective.
 
-```{r}
-# MAP of JAPAN:
-library(ggplot2)
+## MAP of JAPAN
 
-# acquire lon-lat of Japan from map_data()
+First we need to acquire the longitude and latitude data for Japan with the `map_data()` function in ggplot2. We also need to add in the coordinate data into our climate_japan dataset.
+
+```{r get map_data for Japan}
+
 JPN <- map_data(map = "world", region = "Japan")
 
-# join lon-lat data into climate_japan
 lat_lon <- summer_weather %>% 
   group_by(station) %>% 
   summarize(lat = mean(lat), lon = mean(lon))
-
-# i'm sure there is a better way to do this???
 
 climate_japan_map <- left_join(climate_japan, lat_lon, by = "station") 
 
 glimpse(climate_japan_map)
 
-climate_japan_map %>% 
-  ggplot(aes(lon, lat)) +
-  geom_point(aes(color = winter_avg_temp), size = 2.5) +
-  geom_text_repel(aes(label = City),
-                  family = "xkcd", size = 3,
-                  max.iter = 50000) +
-  geom_polygon(data = JPN, aes(x = long, y = lat, group = group), 
-               fill = NA, color = "black") +
-  coord_map() +
-  labs(title = "Avg. Winter Temperature in Japan",
-       subtitle = "Data from RIEM 2016-2017",
-       x = "", y = "") +
-  theme_xkcd() +
-  theme(text = element_text(family = "xkcd", size = 14))
-
 ```
 
+To be able to view the map better, we can cut out the Okinawa and Ryukyu Islands to create space by filtering out latitudes below 30&deg;. We will create a separate map for those islands too.
 
-
-# filter out below 30 lat
-# >>> make separate for Okinawa + Ryukyu Islands for create space
-
-```{r}
-
-glimpse(JPN)
-
-```
-
-
-```{r}
+```{r Japan maps, fig.height=7, fig.width=8, fig.align='center'}
+library(RColorBrewer)
 # Blues set colors:
 colorRampPalette(brewer.pal(n = 9, name = "Blues"))(9)
 # Red set colors:
-
-
+colorRampPalette(brewer.pal(n = 9, name = "Reds"))(9)
 
 # Winter avg. temp: ####
 
@@ -368,22 +334,22 @@ climate_japan_map %>%
   geom_text_repel(aes(label = City),
                   family = "xkcd", size = 4.5,
                   max.iter = 50000) +
-  geom_polygon(data = JPN_1, aes(x = long, y = lat, group = group), 
+  geom_polygon(data = JPN %>% filter(lat > 30), aes(x = long, y = lat, group = group), 
                fill = NA, color = "black") +
   coord_map() +
-  labs(title = "Avg. Winter Temperature in Japan",
+  labs(title = "Summer Humidex across Japan",
        subtitle = "Data from RIEM 2016-2017",
        x = "", y = "") +
   theme_xkcd() +
   theme(text = element_text(family = "xkcd", size = 14)) +
-  scale_color_gradient(low = "#08306B")
+  scale_color_gradient(low = "#FCBBA1", high = "#67000D")
 
 ```
 
+A large area in the middle of Honshu Island that does not have any data is the Central Highland region, which is a very mountainous region and therefore there aren't any airport weather stations located there for our plot. This is a great area to go if you love to hike! In Nagano Prefecture you can go to [Jigokudani Monkey Park](http://en.jigokudani-yaenkoen.co.jp/) where you can see snow monkeys relaxing in the onsen!
 
-```{r}
+```{r Okinawa + Ryukyu map}
 # Okinawa and Ryukyu Islands
-Okinawa_Ryukyu <- JPN %>% filter(lat < 30)
 
 climate_japan_map %>% 
   filter(lat < 30) %>% 
@@ -392,7 +358,7 @@ climate_japan_map %>%
   geom_text_repel(aes(label = City),
                   family = "xkcd", size = 4.5,
                   max.iter = 50000) +
-  geom_polygon(data = JPN %>% filter(lat < 30), aes(x = long, y = lat, group = group), 
+  geom_polygon(data = JPN %>% filter(lat < 30 & long < 133), aes(x = long, y = lat, group = group), 
                fill = NA, color = "black") +
   coord_map() +
   labs(title = "Avg. Winter Temperature in Japan",
@@ -402,10 +368,36 @@ climate_japan_map %>%
   theme(text = element_text(family = "xkcd", size = 14)) +
   scale_color_gradient(low = "#08306B")
 
+climate_japan_map %>% 
+  filter(lat < 30) %>% 
+  ggplot(aes(lon, lat)) +
+  geom_point(aes(color = winter_avg_temp), size = 3.5) +
+  geom_text_repel(aes(label = City),
+                  family = "xkcd", size = 4.5,
+                  max.iter = 50000) +
+  geom_polygon(data = JPN %>% filter(lat < 30 & long < 133), aes(x = long, y = lat, group = group), 
+               fill = NA, color = "black") +
+  coord_map() +
+  labs(title = "Avg. Winter Temperature in Japan",
+       subtitle = "Data from RIEM 2016-2017",
+       x = "", y = "") +
+  theme_xkcd() +
+  theme(text = element_text(family = "xkcd", size = 14)) +
+  scale_color_gradient(low = "#FCBBA1", high = "#67000D")
+
 ```
 
+As we can see from the map, the differences are pretty obvious. The clusters we saw in the Humidex/Avg. Winter Temperature graph can be clearly seen with the map. With Japan being such a narrow chain of islands going from as far north as cold Hokkaido to the warm beaches of Okinawa there aren't many surprises in the data. 
 
-```{r}
+As you can see from the map, it can be **very** humid in Japan during the summer time, it feels like you are melting constantly and I much prefer the Spring months of Japan heralded by the blooming of the sakura/cherry blossoms! 
+
+Sidenote: If you want to take a look at some data viz stuff I did with sakura blooming time data, check it out [here](https://ryo-n7.github.io/2017-09-10-sakura-bloom/)!
+
+
+
+My next steps in this analysis would be to try to recreate a Koeppen climate classification map of Japan using ggplot2 (learning how to use shape files and adding in layers on maps!) and also to try using `leaflet` to create a map of Japan with the winter temperature and humidex data that we gathered with the added bonus of tourist information in each of the city markers! I have a small subsetted example  below: it's my first time with leaflet so any tips would be appreciated!
+
+```{r include=FALSE}
 # Leaflet ####
 
 # Tourist areas:
@@ -420,7 +412,10 @@ tour <- data_frame(
 tour <- left_join(tour, climate_japan_map, by = "City")
 
 # Not have Kanazawa, Kyoto, and Nara >>> just have to manually add in i guess?
+# Use the `geocode()` function from `ggmap` package to grab the longitude and latitude data.
 # won't let me do all 3 at once...
+
+library(ggmap)
 
 Kanazawa <- ggmap::geocode("Kanazawa", output = "latlon")
 Kyoto <- ggmap::geocode("Kyoto", output = "latlon")
@@ -428,7 +423,8 @@ Nara <- ggmap::geocode("Nara", output = "latlon")
 
 missing_tour <- rbind(Kanazawa, Kyoto, Nara)
 
-missing_tour <- missing_tour %>% mutate(City = c("Kanazawa", "Kyoto", "Nara"))
+missing_tour <- missing_tour %>% mutate(City = c("Kanazawa", "Kyoto", "Nara"),
+                                        location = c("Chubu", "Kyoto", "Nara"))
 
 missing_tour
 
@@ -439,29 +435,49 @@ write.csv(tour, "~/R_materials/japan_weather_xkcd/tour.csv")
 
 tour <- read.csv("tour.csv", stringsAsFactors = FALSE)
 
+glimpse(tour)
+
+websites <- data.frame(location = c("Hokkaido", "Tohoku", "Tokyo", "Osaka", "Kobe", "Shikoku", 
+                        "Hiroshima", "Kyushu", "Okinawa", "Chubu", "Kyoto"),
+           tour_website = c("https://www.seejapan.co.uk/where-to-go/explore-regions/destination/hokkaido",
+                            "https://www.seejapan.co.uk/where-to-go/explore-regions/destination/tohoku",
+                            "https://www.seejapan.co.uk/where-to-go/explore-regions/destination/tokyo",
+                            "https://www.seejapan.co.uk/where-to-go/explore-regions/destination/osaka",
+                            "https://www.seejapan.co.uk/where-to-go/explore-regions/destination/kobe",
+                            "https://www.seejapan.co.uk/where-to-go/explore-regions/destination/shikoku",
+                            "https://www.seejapan.co.uk/where-to-go/explore-regions/destination/hiroshima",
+                            "https://www.seejapan.co.uk/where-to-go/explore-regions/destination/kyushu",
+                            "https://www.seejapan.co.uk/where-to-go/explore-regions/destination/okinawa",
+                            "https://www.seejapan.co.uk/where-to-go/explore-regions/destination/chubu",
+                            "https://www.seejapan.co.uk/where-to-go/explore-regions/destination/kyoto"
+                            ))
+
+glimpse(websites)
+
+tour <- left_join(websites, tour, by = "location")
+
+glimpse(tour)
+
 ```
 
 
-```{r}
+```{r leaflet map}
 library(leaflet)
 
-leaflet(climate_japan_map) %>% 
+leaflet(tour) %>% 
   addTiles() %>% 
-  setView(lng = 137.7, lat = 36.5, zoom = 6) %>% 
-  addCircles(lng = ~lon, lat = ~lat, radius = 5000, color = "#09f") %>% 
+  setView(lng = 137.7, lat = 36.5, zoom = 7) %>% 
+  addCircles(lng = ~lon, lat = ~lat, radius = 5000, color = "darkred") %>% 
   addMarkers(lng = ~lon, lat = ~lat, 
-             popup = paste("Winter Avg.(Celsius):",
-               round(climate_japan_map$winter_avg_temp, 2), 
-               " | ",
-               "Summer Humidex:",
-               round(climate_japan_map$summer_humidex, 2)),
-             label = ~City
-             ) %>% 
-  addMarkers(lng = ~tour$lon, lat = ~tour$lat)
+             label = paste(
+               tour$City,
+               "|",
+               "Winter Avg.(Celsius):", round(tour$winter_avg_temp, 2), 
+               "|",
+               "Summer Humidex:", round(tour$summer_humidex, 2)),
+             popup = ~tour_website,
+             labelOptions = labelOptions(textsize = "12px")
+             )
 
 ```
-
-
-
-
 
