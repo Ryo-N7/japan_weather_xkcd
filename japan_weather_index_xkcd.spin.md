@@ -383,7 +383,7 @@ climate_japan_map %>%
   geom_polygon(data = JPN %>% filter(lat < 30 & long < 133), aes(x = long, y = lat, group = group), 
                fill = NA, color = "black") +
   coord_map() +
-  labs(title = "Summer Humidex in Okinawa and Ryukyu Islands",
+  labs(title = "Avg. Winter Temperature in Okinawa and Ryukyu Islands",
        subtitle = "Data from Iowa Environment Mesonet 2016-2017",
        x = "", y = "") +
   theme_xkcd() +
@@ -397,14 +397,14 @@ climate_japan_map %>%
 climate_japan_map %>% 
   filter(lat < 30) %>% 
   ggplot(aes(lon, lat)) +
-  geom_point(aes(color = winter_avg_temp), size = 3.5) +
+  geom_point(aes(color = summer_humidex), size = 3.5) +
   geom_text_repel(aes(label = City),
                   family = "xkcd", size = 4.5,
                   max.iter = 50000) +
   geom_polygon(data = JPN %>% filter(lat < 30 & long < 133), aes(x = long, y = lat, group = group), 
                fill = NA, color = "black") +
   coord_map() +
-  labs(title = "Avg. Winter Temperature in Okinawa and Ryukyu Islands",
+  labs(title = "Summer Humidex in Okinawa and Ryukyu Islands",
        subtitle = "Data from Iowa Environment Mesonet 2016-2017",
        x = "", y = "") +
   theme_xkcd() +

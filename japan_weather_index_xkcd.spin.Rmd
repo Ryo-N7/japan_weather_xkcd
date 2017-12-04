@@ -11,7 +11,7 @@ output:
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
-In the past week or so, XKCD graphs of "The most comfortable place to live in **"X"**" have been popping up on the #rstats community on Twitter. Jumping onto this trend (though slightly late), I will do one for Japan, the country where I was born! Some great examples that I've seen so far include [M&auml;elle Salmon's](http://www.masalmon.eu/2017/11/16/wheretoliveus/) blog post for cities in the USA (which started this trend), as well as ones for [Spain](https://twitter.com/claudiaguirao/status/931615734521909248), [Germany](https://franziloew.github.io/xkcd_weather_cities_de/weatherdata.html), [Netherlands](http://rmhogervorst.nl/cleancode/blog/2017/11/20/xkcd-the-netherlands-weather.html), and even for all of [Europe](https://twitter.com/matamix/status/932192147062784000)! The original XKCD comic can be seen [here](https://xkcd.com/1916/). 
+In the past week or so, XKCD graphs of "The most comfortable place to live in **"X"**" have been popping up on the #rstats community on Twitter. Jumping onto this trend (though slightly late), I will do one for Japan, the country where I was born! Some great examples that I've seen so far include [Ma&euml;lle Salmon's](http://www.masalmon.eu/2017/11/16/wheretoliveus/) blog post for cities in the USA (which started this trend), as well as ones for [Spain](https://twitter.com/claudiaguirao/status/931615734521909248), [Germany](https://franziloew.github.io/xkcd_weather_cities_de/weatherdata.html), [Netherlands](http://rmhogervorst.nl/cleancode/blog/2017/11/20/xkcd-the-netherlands-weather.html), and even for all of [Europe](https://twitter.com/matamix/status/932192147062784000)! The original XKCD comic can be seen [here](https://xkcd.com/1916/). 
 
 Let's get started!
 
@@ -22,9 +22,9 @@ riem_stations(network = "JP__ASOS")
 
 ```
 
-Using M&auml;elle Salmon's `riem` package we can look up weather data from all over the world collected at airport weather stations. We can see that there are 136 different stations (and airports) in Japan's network! From the `ID` we can also see that the airports are coded in the **ICAO** standard rather than the **IATA** standard, this will come into play later!
+Using Ma&euml;lle Salmon's `riem` package we can look up weather data from all over the world collected at airport weather stations. We can see that there are 136 different stations (and airports) in Japan's network! From the `ID` we can also see that the airports are coded in the **ICAO** standard rather than the **IATA** standard, this will come into play later!
 
-For which exact cities to choose, I took a note from M&auml;elle's article where she searched for the cities with the busiest airports. This makes sense as the weather data we will gather and the airport data will then have a similar column (the ICAO code) on which we can join on!
+For which exact cities to choose, I took a note from Ma&euml;lle's article where she searched for the cities with the busiest airports. This makes sense as the weather data we will gather and the airport data will then have a similar column (the ICAO code) on which we can join on!
 
 My source was from the **Ministry of Land, Infrastructure, Transport and Tourism (MLIT)** statistics on Japan's busiest airports (in terms of total passenger traffic), which has been copied onto everybody's favorite "knowledge bank", Wikipedia ([link](https://en.wikipedia.org/wiki/List_of_the_busiest_airports_in_Japan))! The most recent list is from 2015 and although I could look up more recent figures I don't think two years would make such a big difference (... and I'm lazy). 
 
@@ -346,7 +346,7 @@ climate_japan_map %>%
   geom_polygon(data = JPN %>% filter(lat < 30 & long < 133), aes(x = long, y = lat, group = group), 
                fill = NA, color = "black") +
   coord_map() +
-  labs(title = "Summer Humidex in Okinawa and Ryukyu Islands",
+  labs(title = "Avg. Winter Temperature in Okinawa and Ryukyu Islands",
        subtitle = "Data from Iowa Environment Mesonet 2016-2017",
        x = "", y = "") +
   theme_xkcd() +
@@ -356,14 +356,14 @@ climate_japan_map %>%
 climate_japan_map %>% 
   filter(lat < 30) %>% 
   ggplot(aes(lon, lat)) +
-  geom_point(aes(color = winter_avg_temp), size = 3.5) +
+  geom_point(aes(color = summer_humidex), size = 3.5) +
   geom_text_repel(aes(label = City),
                   family = "xkcd", size = 4.5,
                   max.iter = 50000) +
   geom_polygon(data = JPN %>% filter(lat < 30 & long < 133), aes(x = long, y = lat, group = group), 
                fill = NA, color = "black") +
   coord_map() +
-  labs(title = "Avg. Winter Temperature in Okinawa and Ryukyu Islands",
+  labs(title = "Summer Humidex in Okinawa and Ryukyu Islands",
        subtitle = "Data from Iowa Environment Mesonet 2016-2017",
        x = "", y = "") +
   theme_xkcd() +
